@@ -1,3 +1,5 @@
+// ignore_for_file: body_might_complete_normally_nullable
+
 import 'dart:async';
 import 'dart:io';
 
@@ -36,7 +38,19 @@ class FileRepository {
       {required String filePath}) async {
     try {
       var fileAsString = await File(filePath).readAsString();
+      logger.w('''
+      File  $fileAsString
+      ''');
       return fileAsString.split('\n');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<String?> readAllFile({required String filePath}) async {
+    try {
+      var fileAsString = await File(filePath).readAsString();
+      return fileAsString;
     } catch (e) {
       return null;
     }
@@ -187,7 +201,6 @@ class FileRepository {
     for (var i = 0; i < contentLineByLine!.length; i++) {
       if (contentLineByLine[i].contains('set(APPLICATION_ID')) {
         return (contentLineByLine[i] as String).split('"').elementAt(1).trim();
-        ;
       }
     }
   }
@@ -217,75 +230,64 @@ class FileRepository {
   }
 
   Future<File?> changeIosAppName(String? appName) async {
-    List? contentLineByLine = await readFileAsLineByline(
+    var _iosFile = await readAllFile(
       filePath: iosInfoPlistPath,
     );
-    if (checkFileExists(contentLineByLine)) {
+    if (checkFile(_iosFile)) {
       logger.w('''
       Ios AppName could not be changed because,
       The related file could not be found in that path:  $iosInfoPlistPath
       ''');
       return null;
     }
-    for (var i = 0; i < contentLineByLine!.length; i++) {
-      if (contentLineByLine[i].contains('<key>CFBundleName</key>')) {
-        contentLineByLine[i + 1] = '\t<string>$appName</string>\r';
-        break;
-      }
-    }
+    _iosFile = _iosFile!.replaceFirst(
+        RegExp(r'<key>CFBundleName<\/key>\n.+<string>(.*?)<\/string>'),
+        '<key>CFBundleName<\/key>\n	<string>$appName<\/string>');
     var writtenFile = await writeFile(
       filePath: iosInfoPlistPath,
-      content: contentLineByLine.join('\n'),
+      content: _iosFile,
     );
     logger.i('IOS appname changed successfully to : $appName');
     return writtenFile;
   }
 
   Future<File?> changeMacOsAppName(String? appName) async {
-    List? contentLineByLine = await readFileAsLineByline(
+    var _macIosFile = await readAllFile(
       filePath: macosAppInfoxprojPath,
     );
-    if (checkFileExists(contentLineByLine)) {
+    if (checkFile(_macIosFile)) {
       logger.w('''
       macOS AppName could not be changed because,
       The related file could not be found in that path:  $macosAppInfoxprojPath
       ''');
       return null;
     }
-    for (var i = 0; i < contentLineByLine!.length; i++) {
-      if (contentLineByLine[i].contains('PRODUCT_NAME')) {
-        contentLineByLine[i] = 'PRODUCT_NAME = $appName;';
-        break;
-      }
-    }
+    _macIosFile = _macIosFile!.replaceFirst(
+        RegExp(r'PRODUCT_NAME =.(.*?);'), 'PRODUCT_NAME = $appName;');
     var writtenFile = await writeFile(
       filePath: macosAppInfoxprojPath,
-      content: contentLineByLine.join('\n'),
+      content: _macIosFile,
     );
     logger.i('MacOS appname changed successfully to : $appName');
     return writtenFile;
   }
 
   Future<File?> changeAndroidAppName(String? appName) async {
-    List? contentLineByLine = await readFileAsLineByline(
+    var _androidFile = await readAllFile(
       filePath: androidManifestPath,
     );
-    if (checkFileExists(contentLineByLine)) {
+    if (checkFile(_androidFile)) {
       logger.w('''
       Android AppName could not be changed because,
       The related file could not be found in that path:  $androidManifestPath
       ''');
       return null;
     }
-    for (var i = 0; i < contentLineByLine!.length; i++) {
-      if (contentLineByLine[i].contains('android:label=')) {
-        contentLineByLine[i] = '        android:label=\"$appName\"';
-        break;
-      }
-    }
+    _androidFile = _androidFile!.replaceFirst(
+        RegExp(r'android:label="(.*?)"'), 'android:label="$appName"');
     var writtenFile = await writeFile(
       filePath: androidManifestPath,
-      content: contentLineByLine.join('\n'),
+      content: _androidFile,
     );
     logger.i('Android appname changed successfully to : $appName');
     return writtenFile;
@@ -368,6 +370,10 @@ class FileRepository {
   }
 
   bool checkFileExists(List? fileContent) {
+    return fileContent == null || fileContent.isEmpty;
+  }
+
+  bool checkFile(String? fileContent) {
     return fileContent == null || fileContent.isEmpty;
   }
 

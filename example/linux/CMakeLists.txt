@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(runner LANGUAGES CXX)
 
-set(BINARY_NAME "Null Safety - Fixes")
+set(BINARY_NAME "Mourad")
 set(APPLICATION_ID "com.nullSafety.renameExample")
 
 cmake_policy(SET CMP0063 NEW)
